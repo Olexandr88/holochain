@@ -139,7 +139,7 @@ impl SweetConductor {
         C: Into<SweetConductorConfig>,
         R: Into<DynSweetRendezvous> + Clone,
     {
-        Self::create_with_defaults_and_metrics(config, keystore, rendezvous, false, false).await
+        Self::create_with_defaults_and_metrics(config, keystore, rendezvous, false, true).await
     }
 
     /// Create a SweetConductor with a new set of TestEnvs from the given config

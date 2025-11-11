@@ -7,6 +7,7 @@ use crate::conductor::ConductorHandle;
 use holochain_conductor_api::conductor::paths::KeystorePath;
 use holochain_p2p::NetworkCompatParams;
 use lair_keystore_api::types::SharedLockedArray;
+use serde_json::json;
 use std::sync::Mutex;
 
 /// A configurable Builder for Conductor and sometimes ConductorHandle
@@ -387,12 +388,34 @@ impl ConductorBuilder {
         self,
         extra_dna_files: &[(CellId, DnaFile)],
     ) -> ConductorResult<ConductorHandle> {
-        let builder = self;
+        if rustls::crypto::aws_lc_rs::default_provider()
+            .install_default()
+            .is_err()
+        {
+            tracing::error!("could not set crypto provider for tls");
+        }
+        let mut builder = self;
 
         let keystore = builder
             .keystore
             .clone()
             .unwrap_or_else(holochain_keystore::test_keystore);
+
+        let advanced_network_config = builder
+            .config
+            .network
+            .advanced
+            .get_or_insert(json!({}))
+            .as_object_mut()
+            // unwrap is safe because it must be an object and if it was
+            // empty, it'd have been set to an empty object
+            .unwrap();
+        advanced_network_config.insert(
+            "tx5Transport".to_string(),
+            json!({"signalAllowPlainText": true}),
+        );
+        // Put agent info to bootstrap server every second.
+        advanced_network_config.insert("coreBootstrap".to_string(), json!({"backoffMinMs": 1_000}));
 
         let config = Arc::new(builder.config);
         let spaces = Spaces::new(
@@ -458,7 +481,7 @@ impl ConductorBuilder {
             report,
             compat,
             request_timeout: std::time::Duration::from_secs(config.request_timeout_s),
-            k2_test_builder: !builder.test_builder_uses_production_k2_builder,
+            k2_test_builder: false,
             #[cfg(feature = "test_utils")]
             disable_bootstrap: config.network.disable_bootstrap,
             #[cfg(feature = "test_utils")]
