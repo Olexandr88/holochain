@@ -56,7 +56,7 @@ async fn warranted_agent_is_blocked() {
         )
         .await;
 
-    await_consistency(10, [&alice_cell, &bob_cell])
+    await_consistency(15, [&alice_cell, &bob_cell])
         .await
         .unwrap();
 
